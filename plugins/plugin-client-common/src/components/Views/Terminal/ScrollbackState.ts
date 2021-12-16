@@ -17,8 +17,8 @@
 import { Tab as KuiTab, NewSplitRequest } from '@kui-shell/core'
 
 import Block from './Block'
-import { BlockModel } from './Block/BlockModel'
 import SplitPosition from './SplitPosition'
+import { BlockModel } from './Block/BlockModel'
 
 export type Cleaner = () => void
 
@@ -28,9 +28,9 @@ type ScrollbackState = ScrollbackOptions & {
   uuid: string
   blocks: BlockModel[]
   nSectionBreak: number
-  position: SplitPosition
 
   /** Display as strip along the bottom */
+  position: SplitPosition
   willToggleSplitPosition(): void
 
   /** tab facade */

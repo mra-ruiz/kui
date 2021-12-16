@@ -62,21 +62,21 @@ export function nextPosition(o1: OccupancyVector, p1: SplitPosition): SplitPosit
   let candidatePosition = (p1 + 1) % splitPositionLength()
 
   while (candidatePosition !== SplitPosition.default && isOccupied(o1, candidatePosition)) {
-    candidatePosition = (p1 + 1) % splitPositionLength()
+    candidatePosition = (candidatePosition + 1) % splitPositionLength()
   }
   return candidatePosition
 }
 
 export function incrPosition(o1: OccupancyVector, p1: SplitPosition): OccupancyVector {
   const o2 = o1.slice()
-  o2[p1] = o1[p1] + 1
+  o2[p1]++
   return o2
 }
 
 /** TODO  */
 export function decrPosition(o1: OccupancyVector, p1: SplitPosition): OccupancyVector {
   const o2 = o1.slice()
-  o2[p1] = o1[p1] - 1
+  o2[p1]--
   return o2
 }
 
@@ -92,14 +92,14 @@ export function hasDefault(o1: OccupancyVector): boolean {
 
 /** Changing the splits to different positions. Ex: bottom split -> left split */
 export function togglePositions(
-  positions: OccupancyVector,
+  o1: OccupancyVector,
   positionBefore: SplitPosition,
   positionAfter: SplitPosition
 ): OccupancyVector {
-  const pos = positions.slice()
-  pos[positionBefore]--
-  pos[positionAfter]++
-  return pos
+  const o2 = o1.slice()
+  o2[positionBefore]--
+  o2[positionAfter]++
+  return o2
 }
 
 export interface SplitPositionProps {
