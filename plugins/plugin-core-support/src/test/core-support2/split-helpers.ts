@@ -203,7 +203,7 @@ export function isDefault(this: Common.ISuite, N: number) {
 /** Toggle the position of the given split */
 export function doToggleSplitPosition(
   this: Common.ISuite,
-  expectedPosition: SplitPosition = 'bottom-strip',
+  expectedPosition: SplitPosition.bottom,
   inSplit: number,
   expectedSplitCount = 2
 ) {
@@ -211,9 +211,9 @@ export function doToggleSplitPosition(
     try {
       await this.app.client.$(Selectors.SPLIT_N_POSITION_TOGGLE(inSplit)).then(_ => _.click())
 
-      if (expectedPosition === 'bottom-strip') {
+      if (expectedPosition === SplitPosition.bottom) {
         await checkIsBottomStrip(this, inSplit)
-      } else if (expectedPosition === 'left-strip') {
+      } else if (expectedPosition === SplitPosition.left) {
         await checkIsLeftStrip(this, inSplit)
       } else {
         await checkIsDefault(this, inSplit)

@@ -21,7 +21,11 @@
 @import 'Layout/Default';
 @import 'Layout/LeftStrip';
 @import 'Layout/BottomStrip';
+@import 'Layout/RightStrip.scss';
+@import 'Layout/LeftAndRightComboStrips.scss';
+@import 'Layout/RightAndBottomComboStrips.scss';
 @import 'Layout/LeftAndBottomComboStrips';
+@import 'Layout/LeftRightBottomComboStrips';
 @import 'Notebook';
 @import 'Scrollback';
 @import 'SourceRef';

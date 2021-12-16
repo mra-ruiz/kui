@@ -38,9 +38,6 @@ export type NewSplitRequest = {
     /** Use an inverted color scheme for the new split? */
     inverseColors?: boolean
 
-    /** Is this split to be positioned specially, e.g. as a bottom strip? */
-    position?: 'default' | 'left-strip' | 'bottom-strip'
-
     /** Execute this command line in the new split */
     cmdline?: string
 

@@ -20,7 +20,7 @@ import { i18n } from '@kui-shell/core'
 import Icons from '../../spi/Icons'
 import Tooltip from '../../spi/Tooltip'
 import { MutabilityContext } from '../../Client/MutabilityContext'
-import SplitPosition, { SplitPositionProps } from './SplitPosition'
+import SplitPosition, { SplitPositionProps, nextPosition, iconsArr } from './SplitPosition'
 
 import '../../../../web/scss/components/Terminal/SplitHeader.scss'
 
@@ -31,7 +31,7 @@ type Props = SplitPositionProps & {
   onInvert(): void
   onClear(): void
 
-  /** Toggle whether we have a left or bottom strip split */
+  /** Toggle whether we have a left, bottom, or right strip split */
   willToggleSplitPosition(): void
 
   /** Position of the enclosing Split */
@@ -60,30 +60,8 @@ export default class SplitHeader extends React.PureComponent<Props> {
   }
 
   private iconRotation() {
-    const goToDefault = ''
-    const goToLeft = ' kui--rotate-270'
-    const goToBottom = ' kui--rotate-180'
-
-    if (this.props.position === 'default') {
-      // default->bottom if we have no bottom
-      // default->left if we have do have a bottom
-      if (this.props.hasBottomStrip) {
-        return goToLeft
-      } else {
-        return goToBottom
-      }
-    } else if (this.props.position === 'left-strip') {
-      // left always goes to default
-      return goToDefault
-    } else {
-      // bottom->left if we have no left
-      // bottom->default if we do have a left
-      if (!this.props.hasLeftStrip) {
-        return goToLeft
-      } else {
-        return goToDefault
-      }
-    }
+    const p2 = nextPosition(this.props.splitPositions, this.props.position)
+    return iconsArr[p2]
   }
 
   private splitPositionToggleButton() {

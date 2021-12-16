@@ -72,6 +72,12 @@ $action-hover-delay: 210ms;
   }
 }
 
+@mixin RightStrip {
+  &[data-position='right-strip'] {
+    @content;
+  }
+}
+
 @mixin ScrollbackBlockList {
   .kui--scrollback-block-list {
     @content;

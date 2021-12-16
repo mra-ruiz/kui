@@ -24,6 +24,14 @@ import getSize from '../Views/Terminal/getSize'
 import SessionInitStatus from './SessionInitStatus'
 import ScrollableTerminal, { TerminalOptions } from '../Views/Terminal/ScrollableTerminal'
 import { initializeState, MutabilityContext, MutabilityState, toggleReadOnlyBit } from './MutabilityContext'
+import SplitPosition, {
+  incrPosition,
+  decrPosition,
+  initialSplit,
+  SplitPositionProps,
+  togglePositions,
+  OccupancyVector
+} from '../Views/Terminal/SplitPosition'
 
 type Cleaner = () => void
 
@@ -51,22 +59,17 @@ type Props = TabContentOptions &
     tabTitle?: string
   }
 
-type State = Partial<WithTab> & {
-  active: boolean
-  sessionInit: SessionInitStatus
-  sessionInitError?: Error
-  showSessionInitDone: boolean
+type State = Partial<WithTab> &
+  SplitPositionProps & {
+    active: boolean
+    sessionInit: SessionInitStatus
+    sessionInitError?: Error
+    showSessionInitDone: boolean
 
-  /** Does this tab have a left strip layout? */
-  hasLeftStrip: boolean
-
-  /** Does this tab have a bottom strip layout? */
-  hasBottomStrip: boolean
-
-  /** grab a ref (below) so that we can maintain focus */
-  _terminal: React.RefObject<ScrollableTerminal>
-  mutability: MutabilityState
-}
+    /** grab a ref (below) so that we can maintain focus */
+    _terminal: React.RefObject<ScrollableTerminal>
+    mutability: MutabilityState
+  }
 
 /**
  *
@@ -104,8 +107,7 @@ export default class TabContent extends React.PureComponent<Props, State> {
       tab: React.createRef(),
       sessionInit: 'NotYet',
       showSessionInitDone: true,
-      hasLeftStrip: false,
-      hasBottomStrip: false,
+      splitPositions: initialSplit(),
       _terminal: React.createRef(),
       mutability: initializeState(this.props.snapshot)
     }
@@ -265,12 +267,30 @@ export default class TabContent extends React.PureComponent<Props, State> {
     return 'Please wait while we connect to your cluster'
   }
 
-  /** Enter/exit mode where one split is displayed along the left */
-  private readonly _toggleLeftStripMode = () => this.setState(curState => ({ hasLeftStrip: !curState.hasLeftStrip }))
+  /** Modify current location of a split */
+  private readonly _togglePositions = (
+    positionBefore: SplitPosition,
+    positionAfter: SplitPosition,
+    occupancy: OccupancyVector
+  ) => {
+    this.setState(curState => ({
+      splitPositions: togglePositions(occupancy || curState.splitPositions, positionBefore, positionAfter)
+    }))
+  }
 
-  /** Enter/exit mode where one split is displayed along the bottom */
-  private readonly _toggleBottomStripMode = () =>
-    this.setState(curState => ({ hasBottomStrip: !curState.hasBottomStrip }))
+  /** WRITE USEFUL COMMENT: increments positions in positions array */
+  private _incrPosition = (position: SplitPosition) => {
+    this.setState(curState => ({
+      splitPositions: incrPosition(curState.splitPositions, position)
+    }))
+  }
+
+  /** WRITE USEFUL COMMENT: removes positions from positions array */
+  private _decrPosition = (position: SplitPosition) => {
+    this.setState(curState => ({
+      splitPositions: decrPosition(curState.splitPositions, position)
+    }))
+  }
 
   /** Toggle attribute on Tab DOM */
   private readonly _toggleAttribute = (attr: string) => {
@@ -302,10 +322,10 @@ export default class TabContent extends React.PureComponent<Props, State> {
               toggleAttribute={this._toggleAttribute}
               onClear={this._onClear}
               ref={this.state._terminal}
-              hasLeftStrip={this.state.hasLeftStrip}
-              hasBottomStrip={this.state.hasBottomStrip}
-              willToggleLeftStripMode={this._toggleLeftStripMode}
-              willToggleBottomStripMode={this._toggleBottomStripMode}
+              splitPositions={this.state.splitPositions}
+              togglePositions={this._togglePositions}
+              incrPosition={this._incrPosition}
+              decrPosition={this._decrPosition}
               noActiveInput={this.props.noActiveInput || !this.state.mutability.editable}
             >
               {this.children()}
@@ -413,8 +433,9 @@ export default class TabContent extends React.PureComponent<Props, State> {
           ref={this.state.tab}
           className={this.tabClassName()}
           data-tab-id={this.props.uuid}
-          data-has-left-strip={this.state.hasLeftStrip || undefined}
-          data-has-bottom-strip={this.state.hasBottomStrip || undefined}
+          data-has-left-strip={this.state.splitPositions[SplitPosition.left] > 1 || undefined}
+          data-has-bottom-strip={this.state.splitPositions[SplitPosition.bottom] > 0 || undefined}
+          data-has-right-strip={this.state.splitPositions[SplitPosition.right] > 2 || undefined}
         >
           {this.body()}
         </div>

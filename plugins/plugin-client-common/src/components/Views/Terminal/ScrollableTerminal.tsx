@@ -46,7 +46,14 @@ import ScrollbackState, { ScrollbackOptions, Cleaner } from './ScrollbackState'
 import Block from './Block'
 import getSize from './getSize'
 import SplitHeader from './SplitHeader'
-import { SplitPositionProps } from './SplitPosition'
+import SplitPosition, {
+  decrPosition,
+  hasDefault,
+  isFull,
+  nextPosition,
+  OccupancyVector,
+  SplitPositionProps
+} from './SplitPosition'
 import { NotebookImpl, isNotebookImpl, snapshot, FlightRecorder, tabAlignment } from './Snapshot'
 import KuiConfiguration from '../../Client/KuiConfiguration'
 import SessionInitStatus from '../../Client/SessionInitStatus'
@@ -126,11 +133,13 @@ type Props = TerminalOptions &
     /** Status of the proxy session (for client-server architectures of Kui) */
     sessionInit: SessionInitStatus
 
-    /** Toggle whether we have a left strip split */
-    willToggleLeftStripMode(): void
+    togglePositions(posBefore: SplitPosition, posAfter: SplitPosition, occupancy?: OccupancyVector): void
 
-    /** Toggle whether we have a bottom strip split */
-    willToggleBottomStripMode(): void
+    /** WRITE A USEFUL COMMENT: adds a split? */
+    incrPosition(pos: SplitPosition): void
+
+    /** WRITE A USEFUL COMMENT: removes a split? */
+    decrPosition(pos: SplitPosition): void
   }
 
 interface State {
@@ -255,11 +264,7 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
           position: split.position
         })
 
-        if (split.position === 'left-strip') {
-          this.props.willToggleLeftStripMode()
-        } else if (split.position === 'bottom-strip') {
-          this.props.willToggleBottomStripMode()
-        }
+        this.props.incrPosition(split.position)
 
         if (model.metadata.preferReExecute) {
           Util.promiseEach(split.blocks, async _ => {
@@ -449,16 +454,20 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
 
   /** @return the number of splits with `position=default` */
   private numDefaultSplits() {
-    return this.state.splits.reduce((N, _) => (N += _.position === 'default' ? 1 : 0), 0)
+    return this.state.splits.reduce((N, _) => (N += _.position === SplitPosition.default ? 1 : 0), 0)
   }
 
-  private scrollback(sbuuid = this.allocateUUIDForScrollback(), opts: ScrollbackOptions = {}): ScrollbackState {
+  private scrollback(
+    sbuuid = this.allocateUUIDForScrollback(),
+    opts: ScrollbackOptions & { position?: SplitPosition } = {}
+  ): ScrollbackState {
     const state: ScrollbackState = {
       uuid: sbuuid,
       cleaners: [],
       inverseColors: opts.inverseColors,
       blocks: this.restoreBlocks(sbuuid).concat([Active()]),
       nSectionBreak: 0,
+      position: SplitPosition.default,
       remove: undefined,
       clear: undefined,
       invert: undefined,
@@ -475,8 +484,6 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
       willInsertSection: undefined,
       tabRefFor: undefined,
       scrollableRef: undefined,
-
-      position: opts.position || 'default',
       willToggleSplitPosition: undefined
     }
 
@@ -679,32 +686,9 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
       const sbidx = this.findSplit(this.state, sbuuid)
       if (sbidx >= 0) {
         const scrollback = this.state.splits[sbidx]
-        if (scrollback.position === 'default') {
-          if (this.props.hasBottomStrip) {
-            // this split is default, and we have a bottom split; make this a left split
-            scrollback.position = 'left-strip'
-            this.props.willToggleLeftStripMode()
-          } else {
-            // this split is default, and we don't have a bottom split; make this a bottom split
-            scrollback.position = 'bottom-strip'
-            this.props.willToggleBottomStripMode()
-          }
-        } else if (scrollback.position === 'bottom-strip') {
-          if (this.props.hasLeftStrip) {
-            // this split is bottom, and we have a left split; revert this to default
-            scrollback.position = 'default'
-            this.props.willToggleBottomStripMode()
-          } else {
-            // this split is bottom, and we don't have a left split; make this a left split
-            scrollback.position = 'left-strip'
-            this.props.willToggleLeftStripMode()
-            this.props.willToggleBottomStripMode()
-          }
-        } else {
-          // this split is left; always return to default
-          this.props.willToggleLeftStripMode()
-          scrollback.position = 'default'
-        }
+        const positionBefore = scrollback.position
+        const positionAfter = nextPosition(this.props.splitPositions, positionBefore)
+        this.props.togglePositions(positionBefore, positionAfter)
       }
     }
 
@@ -793,7 +777,7 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
 
   /** Some splits may not be ideal receptacles for arbitrary content */
   private isOkSplitForContent(idx: number): boolean {
-    return this.state.splits[idx].position === 'default'
+    return this.state.splits[idx].position === SplitPosition.default
   }
 
   /**
@@ -1191,6 +1175,8 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
   private async onSplit(request: TabLayoutModificationResponse<NewSplitRequest>, sbuuid: string) {
     const nTerminals = this.state.splits.length
 
+    this.props.incrPosition(SplitPosition.default)
+
     if (request.spec.options.swap) {
       // swap to splits
       return this.swapSplits(request.spec.options.swap[0], request.spec.options.swap[1])
@@ -1316,27 +1302,6 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
     this.setState(curState => {
       const idx = this.findSplit(this.state, sbuuid)
       if (idx >= 0) {
-        // if the user typed exit/ctrl+D in a 2-split scenario where
-        // the split being closed is a default split, and the other is
-        // a bottom strip... we have a choice: either turn the bottom
-        // strip into a default split, or refuse the request to
-        // close. For now, we opt for the former
-        if (
-          (this.props.hasBottomStrip || this.props.hasLeftStrip) &&
-          curState.splits.length === 2 &&
-          curState.splits[idx].position === 'default'
-        ) {
-          const otherSplit = curState.splits[1 - idx]
-          otherSplit.position = 'default'
-          setTimeout(() => {
-            if (this.props.hasBottomStrip) {
-              this.props.willToggleBottomStripMode()
-            } else {
-              this.props.willToggleLeftStripMode()
-            }
-          })
-        }
-
         Events.eventBus.emitTabLayoutChange(sbuuid)
 
         if (idx === curState.splits.length - 1) {
@@ -1345,14 +1310,6 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
           // described in the `scrollbackCounter` comment above does
           // not occur when removing the last split
           this.scrollbackCounter--
-        }
-
-        if (curState.splits[idx].position === 'left-strip') {
-          // then we are closing the left strip
-          setTimeout(() => this.props.willToggleLeftStripMode())
-        } else if (curState.splits[idx].position === 'bottom-strip') {
-          // then we are closing the bottom strip
-          setTimeout(() => this.props.willToggleBottomStripMode())
         }
 
         // remove any watchers from the blocks of the split we are
@@ -1369,6 +1326,25 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
           // the last split was removed; notify parent
           const parent = this.props.tab
           Events.eventBus.emitWithTabId('/tab/close/request', parent.uuid, parent)
+        } else {
+          // otherwise we have at least one remaining split, but it's possible we removed the only remaining default split
+          // If so, we ned to pick an arbitrary split and convert it to a default split
+
+          // First, let's check whether this is indeed the case
+          const p1 = curState.splits[idx].position
+          const o1 = this.props.splitPositions
+          const o2 = decrPosition(o1, p1)
+          if (!hasDefault(o2)) {
+            // Oops, we just removed the only remaining default split.
+            // For now, we pick an arbitrary split and convert it to a default split
+            const arbitrarySplit = splits[0]
+            const positionBefore = arbitrarySplit.position
+            const p2 = SplitPosition.default
+            this.props.togglePositions(positionBefore, p2, o2)
+          } else {
+            // otherwise, we can decrement position normally
+            this.props.decrPosition(p1)
+          }
         }
 
         const focusedIdx = idx === 0 ? 0 : idx - 1
@@ -1457,8 +1433,15 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
           }
         })
       })
-      facade = Object.assign({}, tabFacade, { uuid })
-      scrollback.facade = facade
+      try {
+        console.error(`1`)
+        facade = Object.assign({}, tabFacade, { uuid })
+        console.error(`2`)
+        scrollback.facade = facade
+        console.error(`3`)
+      } catch (err) {
+        console.error(`Somethings wrong with facade: `, err)
+      }
     }
 
     return scrollback.facade
@@ -1468,8 +1451,9 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
   private isWidthConstrained(scrollback: ScrollbackState) {
     return (
       this.props.config.isPopup ||
-      scrollback.position === 'left-strip' ||
-      (scrollback.position === 'default' && this.numDefaultSplits() > 1)
+      scrollback.position === SplitPosition.left ||
+      scrollback.position === SplitPosition.right ||
+      (scrollback.position === SplitPosition.default && this.numDefaultSplits() > 1)
     )
   }
 
@@ -1567,7 +1551,9 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
       ref: scrollback.tabRefFor,
       onClick: scrollback.onClick, // fancier for bottom input (just below, too)? !this.props.noActiveInput ? scrollback.onClick : undefined,
       onMouseDown:
-        scrollback.position === 'bottom-strip' /* || this.props.noActiveInput */ ? scrollback.onMouseDown : undefined
+        scrollback.position === SplitPosition.bottom /* || this.props.noActiveInput */
+          ? scrollback.onMouseDown
+          : undefined
     }
 
     const children = (
@@ -1578,15 +1564,10 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
             onRemove={scrollback.remove}
             onClear={scrollback.clear}
             onInvert={scrollback.invert}
-            hasLeftStrip={this.props.hasLeftStrip}
-            hasBottomStrip={this.props.hasBottomStrip}
+            splitPositions={this.props.splitPositions}
             willToggleSplitPosition={
-              this.props.hasLeftStrip && this.props.hasBottomStrip && scrollback.position === 'default'
-                ? undefined // have both strips already and this is a default split? no toggle for you!
-                : (this.props.hasLeftStrip || this.props.hasBottomStrip) &&
-                  this.state.splits.length === 2 &&
-                  scrollback.position === 'default'
-                ? undefined // have 2 splits, and one of them is non-default, and this is a default? also no toggler for you
+              isFull(this.props.splitPositions) && scrollback.position === SplitPosition.default
+                ? undefined // Ex: if right, bottom, and left splits exist, then any default positions has nowhere to toggle to
                 : scrollback.willToggleSplitPosition
             }
           />
@@ -1599,7 +1580,7 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
       </React.Fragment>
     )
 
-    return React.createElement(scrollback.position === 'default' ? 'div' : 'span', props, children)
+    return React.createElement(scrollback.position === SplitPosition.default ? 'div' : 'span', props, children)
   }
 
   public render() {
