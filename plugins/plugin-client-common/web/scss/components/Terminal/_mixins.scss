@@ -61,19 +61,19 @@ $action-hover-delay: 210ms;
 }
 
 @mixin LeftStrip {
-  &[data-position='left-strip'] {
+  &[data-position='left'] {
     @content;
   }
 }
 
 @mixin BottomStrip {
-  &[data-position='bottom-strip'] {
+  &[data-position='bottom'] {
     @content;
   }
 }
 
 @mixin RightStrip {
-  &[data-position='right-strip'] {
+  &[data-position='right'] {
     @content;
   }
 }

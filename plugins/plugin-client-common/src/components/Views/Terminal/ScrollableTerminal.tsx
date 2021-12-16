@@ -686,8 +686,11 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
       const sbidx = this.findSplit(this.state, sbuuid)
       if (sbidx >= 0) {
         const scrollback = this.state.splits[sbidx]
+
         const positionBefore = scrollback.position
+
         const positionAfter = nextPosition(this.props.splitPositions, positionBefore)
+        console.error(`posBefore, posAfter:`, positionBefore, positionAfter)
         this.props.togglePositions(positionBefore, positionAfter)
       }
     }
@@ -1433,15 +1436,8 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
           }
         })
       })
-      try {
-        console.error(`1`)
-        facade = Object.assign({}, tabFacade, { uuid })
-        console.error(`2`)
-        scrollback.facade = facade
-        console.error(`3`)
-      } catch (err) {
-        console.error(`Somethings wrong with facade: `, err)
-      }
+      facade = Object.assign({}, tabFacade, { uuid })
+      scrollback.facade = facade
     }
 
     return scrollback.facade
@@ -1540,12 +1536,11 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
   private split(scrollback: ScrollbackState, sbidx: number) {
     const tab = this.tabFor(scrollback)
     const isWidthConstrained = this.isWidthConstrained(scrollback)
-
     const props = {
       className: 'kui--scrollback' + (scrollback.inverseColors ? ' kui--inverted-color-context' : ''),
       'data-is-width-constrained': isWidthConstrained || undefined,
       'data-is-focused': sbidx === this.state.focusedIdx || undefined,
-      'data-position': scrollback.position,
+      'data-position': SplitPosition[scrollback.position],
       key: tab.uuid,
       'data-scrollback-id': tab.uuid,
       ref: scrollback.tabRefFor,

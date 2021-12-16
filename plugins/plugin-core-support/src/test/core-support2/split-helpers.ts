@@ -203,7 +203,7 @@ export function isDefault(this: Common.ISuite, N: number) {
 /** Toggle the position of the given split */
 export function doToggleSplitPosition(
   this: Common.ISuite,
-  expectedPosition: SplitPosition.bottom,
+  expectedPosition: SplitPosition = SplitPosition.bottom,
   inSplit: number,
   expectedSplitCount = 2
 ) {

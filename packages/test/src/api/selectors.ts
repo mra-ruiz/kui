@@ -163,8 +163,9 @@ export const SPLIT_N_FOCUS = (N: number) => `${SPLITS}:nth-child(${N}) ${current
 export const SPLIT_N_OUTPUT = (N: number) => `${SPLITS}:nth-child(${N}) .repl-output`
 
 export const SPLIT_N_AS_DEFAULT = (N: number) => `${SPLIT_N(N)}[data-position="default"]`
-export const SPLIT_N_AS_LEFT_STRIP = (N: number) => `${SPLIT_N(N)}[data-position="left-strip"]`
-export const SPLIT_N_AS_BOTTOM_STRIP = (N: number) => `${SPLIT_N(N)}[data-position="bottom-strip"]`
+export const SPLIT_N_AS_LEFT_STRIP = (N: number) => `${SPLIT_N(N)}[data-position="left"]`
+export const SPLIT_N_AS_BOTTOM_STRIP = (N: number) => `${SPLIT_N(N)}[data-position="bottom"]`
+export const SPLIT_N_AS_RIGHT_STRIP = (N: number) => `${SPLIT_N(N)}[data-position="right"]`
 
 export const CURRENT_PROMPT_BLOCK_FOR_SPLIT = (splitIndex: number) => `${SPLIT_N(splitIndex)} ${current(_PROMPT_BLOCK)}`
 export const CURRENT_PROMPT_FOR_SPLIT = (splitIndex: number) =>

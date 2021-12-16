@@ -8,7 +8,7 @@
     "splits": [
       {
         "uuid": "2_c57e811f-2da8-557e-a402-9f0950407675",
-        "position": "left-strip",
+        "position": "left",
         "inverseColors": true,
         "blocks": [
           {
@@ -14960,7 +14960,7 @@
       },
       {
         "uuid": "2_cd0d8750-9c3b-5e47-bb06-8b8fe6c85bfb",
-        "position": "bottom-strip",
+        "position": "bottom",
         "blocks": [
           {
             "response": {

@@ -21,7 +21,7 @@
  * 4. Given an initial occupancy state O1, to actuate a change of a split from position P1 to P2, call `O2 = togglePositions(O1, P1, P2)`
  * */
 
-const enum SplitPosition {
+enum SplitPosition {
   default = 0,
   right = 1,
   bottom = 2,
@@ -99,6 +99,8 @@ export function togglePositions(
   const o2 = o1.slice()
   o2[positionBefore]--
   o2[positionAfter]++
+
+  console.error(`o1, o2, posBefore, posAfter`, o1, o2, positionBefore, positionAfter)
   return o2
 }
 

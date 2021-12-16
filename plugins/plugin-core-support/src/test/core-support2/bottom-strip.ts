@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { SplitPosition } from '@kui-shell/plugin-client-common'
 import { Common, Util } from '@kui-shell/test'
 
 import {
@@ -47,25 +48,25 @@ describe(`bottom strip splits ${process.env.MOCHA_RUN_TARGET || ''}`, function(t
   count(2)
 
   // DEFAULT+DEFAULT -> BOTTOM+DEFAULT
-  togglePosition('bottom-strip', 1)
+  togglePosition(SplitPosition.bottom, 1)
   count(2)
   bottomStrip(1)
   defaultSplit(2)
 
   // BOTTOM+DEFAULT -> LEFT+DEFAULT
-  togglePosition('left-strip', 1)
+  togglePosition(SplitPosition.left, 1)
   count(2)
   leftStrip(1)
   defaultSplit(2)
 
   // LEFT+DEFAULT -> DEFAULT+DEFAULT
-  togglePosition('default', 1)
+  togglePosition(SplitPosition.default, 1)
   count(2)
   defaultSplit(1)
   defaultSplit(2)
 
   // (round robin!) DEFAULT+DEFAULT -> BOTTOM+DEFAULT
-  togglePosition('bottom-strip', 1)
+  togglePosition(SplitPosition.bottom, 1)
   count(2)
   bottomStrip(1)
   defaultSplit(2)
@@ -91,7 +92,7 @@ describe(`bottom strip splits ${process.env.MOCHA_RUN_TARGET || ''}`, function(t
     count(1)
     splitTheTerminalViaButton(2)
     count(2)
-    togglePosition('bottom-strip', 2)
+    togglePosition(SplitPosition.bottom, 2)
     defaultSplit(1)
     bottomStrip(2)
     closeViaCommand(1, 1) // close the first split, which is the default split
@@ -104,7 +105,7 @@ describe(`bottom strip splits ${process.env.MOCHA_RUN_TARGET || ''}`, function(t
     count(1)
     splitTheTerminalViaButton(2)
     count(2)
-    togglePosition('bottom-strip', 1) // 1 this time
+    togglePosition(SplitPosition.bottom, 1) // 1 this time
     bottomStrip(1)
     defaultSplit(2)
     closeViaCommand(1, 1) // close the first split, which is the bottom strip
