@@ -433,9 +433,9 @@ export default class TabContent extends React.PureComponent<Props, State> {
           ref={this.state.tab}
           className={this.tabClassName()}
           data-tab-id={this.props.uuid}
-          data-has-left-strip={this.state.splitPositions[SplitPosition.left] > 1 || undefined}
+          data-has-left-strip={this.state.splitPositions[SplitPosition.left] > 0 || undefined}
           data-has-bottom-strip={this.state.splitPositions[SplitPosition.bottom] > 0 || undefined}
-          data-has-right-strip={this.state.splitPositions[SplitPosition.right] > 2 || undefined}
+          data-has-right-strip={this.state.splitPositions[SplitPosition.right] > 0 || undefined}
         >
           {this.body()}
         </div>

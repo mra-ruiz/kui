@@ -467,7 +467,7 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
       inverseColors: opts.inverseColors,
       blocks: this.restoreBlocks(sbuuid).concat([Active()]),
       nSectionBreak: 0,
-      position: SplitPosition.default,
+      position: opts.position || SplitPosition.default,
       remove: undefined,
       clear: undefined,
       invert: undefined,
