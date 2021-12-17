@@ -133,13 +133,14 @@ type Props = TerminalOptions &
     /** Status of the proxy session (for client-server architectures of Kui) */
     sessionInit: SessionInitStatus
 
+    /** Changing the splits to different positions. Ex: bottom split -> left split */
     togglePositions(posBefore: SplitPosition, posAfter: SplitPosition, occupancy?: OccupancyVector): void
 
-    /** WRITE A USEFUL COMMENT: adds a split? */
-    incrPosition(pos: SplitPosition): void
+    /** Incrementing the number of splits in position p1 of the occupancyVector in SplitPositionProps */
+    incrPosition(p1: SplitPosition): void
 
-    /** WRITE A USEFUL COMMENT: removes a split? */
-    decrPosition(pos: SplitPosition): void
+    /** Decrementing the number of splits in position p1 of the occupancyVector in SplitPositionProps */
+    decrPosition(p1: SplitPosition): void
   }
 
 interface State {
@@ -686,11 +687,11 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
       const sbidx = this.findSplit(this.state, sbuuid)
       if (sbidx >= 0) {
         const scrollback = this.state.splits[sbidx]
-
         const positionBefore = scrollback.position
-
         const positionAfter = nextPosition(this.props.splitPositions, positionBefore)
-        console.error(`posBefore, posAfter:`, positionBefore, positionAfter)
+
+        // set the position change (positionBefore -> positionAfter) and toggle it
+        scrollback.position = SplitPosition[SplitPosition[positionAfter]]
         this.props.togglePositions(positionBefore, positionAfter)
       }
     }
@@ -1232,7 +1233,6 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
           splits: newSplits
         }
       })
-
       return request.spec.ok
     }
   }
@@ -1308,15 +1308,11 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
         Events.eventBus.emitTabLayoutChange(sbuuid)
 
         if (idx === curState.splits.length - 1) {
-          // If we are removing the last split, we can safely
-          // decrement the running counter. The reordering problem
-          // described in the `scrollbackCounter` comment above does
-          // not occur when removing the last split
+          // If we are removing the last split, we can safely decrement the running counter
           this.scrollbackCounter--
         }
 
-        // remove any watchers from the blocks of the split we are
-        // about to remove
+        // remove any watchers from the blocks of the split we are about to remove
         curState.splits[idx].blocks.forEach(this.removeWatchableBlock)
 
         // clean up per-split event handlers
@@ -1330,24 +1326,27 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
           const parent = this.props.tab
           Events.eventBus.emitWithTabId('/tab/close/request', parent.uuid, parent)
         } else {
-          // otherwise we have at least one remaining split, but it's possible we removed the only remaining default split
-          // If so, we ned to pick an arbitrary split and convert it to a default split
+          // otherwise we have at least one remaining split, but it's possible we removed the
+          // only remaining default split. If so, we need to pick an arbitrary split and convert
+          // it to a default split
 
           // First, let's check whether this is indeed the case
           const p1 = curState.splits[idx].position
           const o1 = this.props.splitPositions
           const o2 = decrPosition(o1, p1)
+
           if (!hasDefault(o2)) {
             // Oops, we just removed the only remaining default split.
             // For now, we pick an arbitrary split and convert it to a default split
             const arbitrarySplit = splits[0]
             const positionBefore = arbitrarySplit.position
-            const p2 = SplitPosition.default
-            this.props.togglePositions(positionBefore, p2, o2)
-          } else {
-            // otherwise, we can decrement position normally
-            this.props.decrPosition(p1)
+            const positionAfter = SplitPosition.default
+
+            // set the position change (positionBefore -> positionAfter) and toggle it
+            arbitrarySplit.position = SplitPosition[SplitPosition[positionAfter]]
+            this.props.togglePositions(positionBefore, positionAfter, o2)
           }
+          this.props.decrPosition(p1)
         }
 
         const focusedIdx = idx === 0 ? 0 : idx - 1
@@ -1561,8 +1560,9 @@ export default class ScrollableTerminal extends React.PureComponent<Props, State
             onInvert={scrollback.invert}
             splitPositions={this.props.splitPositions}
             willToggleSplitPosition={
-              isFull(this.props.splitPositions) && scrollback.position === SplitPosition.default
-                ? undefined // Ex: if right, bottom, and left splits exist, then any default positions has nowhere to toggle to
+              scrollback.position === SplitPosition.default &&
+              (this.props.splitPositions[scrollback.position] === 1 || isFull(this.props.splitPositions))
+                ? undefined // Ex: if right, bottom, and left splits exist, then any default positions have nowhere to toggle to
                 : scrollback.willToggleSplitPosition
             }
           />

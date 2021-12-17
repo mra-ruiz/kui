@@ -33,7 +33,7 @@ enum SplitPosition {
  * Ex: When split is in the left position, icon rotates 270 degrees.
  * This is currently used in SplitHeader.tsx
  */
-export const iconsArr = ['', 'kui--rotate-90', 'kui--rotate-180', 'kui--rotate-270']
+export const iconsArr = ['', ' kui--rotate-90', ' kui--rotate-180', ' kui--rotate-270']
 
 /** Defines a number of splits in each position. We currently enforce an invariant[1] that there can
  * be at most one splits in any non-default position */
@@ -46,12 +46,16 @@ export function initialSplit(): OccupancyVector {
 
 /** TODO */
 function splitPositionLength(): number {
-  // return (Object.keys(splitPos).length)
-  return 4
+  return Object.keys(SplitPosition).length / 2
 }
 
 function isOccupied(o1: OccupancyVector, p1: SplitPosition): boolean {
   return o1[p1] > 0
+}
+
+/** TODO */
+export function isFull(o1: OccupancyVector): boolean {
+  return o1.every(posQuantity => posQuantity > 0)
 }
 
 /** We have to find the next position while maintaining the invariant(see [1])
@@ -67,22 +71,18 @@ export function nextPosition(o1: OccupancyVector, p1: SplitPosition): SplitPosit
   return candidatePosition
 }
 
+/** Incrementing the number of splits in position p1 of the occupancyVector o1 */
 export function incrPosition(o1: OccupancyVector, p1: SplitPosition): OccupancyVector {
   const o2 = o1.slice()
   o2[p1]++
   return o2
 }
 
-/** TODO  */
+/** Decrementing the number of splits in position p1 of the occupancyVector o1 */
 export function decrPosition(o1: OccupancyVector, p1: SplitPosition): OccupancyVector {
   const o2 = o1.slice()
   o2[p1]--
   return o2
-}
-
-/** TODO */
-export function isFull(o1: OccupancyVector): boolean {
-  return o1.every(_ => isOccupied(o1, _))
 }
 
 /** TODO */
@@ -92,15 +92,13 @@ export function hasDefault(o1: OccupancyVector): boolean {
 
 /** Changing the splits to different positions. Ex: bottom split -> left split */
 export function togglePositions(
-  o1: OccupancyVector,
   positionBefore: SplitPosition,
-  positionAfter: SplitPosition
+  positionAfter: SplitPosition,
+  o1?: OccupancyVector
 ): OccupancyVector {
   const o2 = o1.slice()
   o2[positionBefore]--
   o2[positionAfter]++
-
-  console.error(`o1, o2, posBefore, posAfter`, o1, o2, positionBefore, positionAfter)
   return o2
 }
 

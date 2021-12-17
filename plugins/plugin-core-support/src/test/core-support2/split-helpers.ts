@@ -184,6 +184,10 @@ function checkIsBottomStrip(ctx: Common.ISuite, N: number) {
   return ctx.app.client.$(Selectors.SPLIT_N_AS_BOTTOM_STRIP(N)).then(_ => _.waitForExist({ timeout: CLI.waitTimeout }))
 }
 
+function checkIsRightStrip(ctx: Common.ISuite, N: number) {
+  return ctx.app.client.$(Selectors.SPLIT_N_AS_RIGHT_STRIP(N)).then(_ => _.waitForExist({ timeout: CLI.waitTimeout }))
+}
+
 function checkIsDefault(ctx: Common.ISuite, N: number) {
   return ctx.app.client.$(Selectors.SPLIT_N_AS_DEFAULT(N)).then(_ => _.waitForExist({ timeout: CLI.waitTimeout }))
 }
@@ -196,6 +200,10 @@ export function isBottomStrip(this: Common.ISuite, N: number) {
   it(`should show split ${N} as being a bottom strip`, () => checkIsBottomStrip(this, N).catch(Common.oops(this, true)))
 }
 
+export function isRightStrip(this: Common.ISuite, N: number) {
+  it(`should show split ${N} as being a right strip`, () => checkIsRightStrip(this, N).catch(Common.oops(this, true)))
+}
+
 export function isDefault(this: Common.ISuite, N: number) {
   it(`should show split ${N} as being a default strip`, () => checkIsDefault(this, N).catch(Common.oops(this, true)))
 }
@@ -203,7 +211,7 @@ export function isDefault(this: Common.ISuite, N: number) {
 /** Toggle the position of the given split */
 export function doToggleSplitPosition(
   this: Common.ISuite,
-  expectedPosition: SplitPosition = SplitPosition.bottom,
+  expectedPosition: SplitPosition = SplitPosition.right,
   inSplit: number,
   expectedSplitCount = 2
 ) {
@@ -211,7 +219,9 @@ export function doToggleSplitPosition(
     try {
       await this.app.client.$(Selectors.SPLIT_N_POSITION_TOGGLE(inSplit)).then(_ => _.click())
 
-      if (expectedPosition === SplitPosition.bottom) {
+      if (expectedPosition === SplitPosition.right) {
+        await checkIsRightStrip(this, inSplit)
+      } else if (expectedPosition === SplitPosition.bottom) {
         await checkIsBottomStrip(this, inSplit)
       } else if (expectedPosition === SplitPosition.left) {
         await checkIsLeftStrip(this, inSplit)

@@ -29,8 +29,7 @@ import SplitPosition, {
   decrPosition,
   initialSplit,
   SplitPositionProps,
-  togglePositions,
-  OccupancyVector
+  togglePositions
 } from '../Views/Terminal/SplitPosition'
 
 type Cleaner = () => void
@@ -267,25 +266,21 @@ export default class TabContent extends React.PureComponent<Props, State> {
     return 'Please wait while we connect to your cluster'
   }
 
-  /** Modify current location of a split */
-  private readonly _togglePositions = (
-    positionBefore: SplitPosition,
-    positionAfter: SplitPosition,
-    occupancy: OccupancyVector
-  ) => {
+  /** State handler for changing the splits to different positions. Ex: bottom split -> left split */
+  private readonly _togglePositions = (positionBefore: SplitPosition, positionAfter: SplitPosition) => {
     this.setState(curState => ({
-      splitPositions: togglePositions(occupancy || curState.splitPositions, positionBefore, positionAfter)
+      splitPositions: togglePositions(positionBefore, positionAfter, curState.splitPositions)
     }))
   }
 
-  /** WRITE USEFUL COMMENT: increments positions in positions array */
+  /** State handler for incrementing the number of splits in position p1 of the occupancyVector in SplitPositionProps */
   private _incrPosition = (position: SplitPosition) => {
     this.setState(curState => ({
       splitPositions: incrPosition(curState.splitPositions, position)
     }))
   }
 
-  /** WRITE USEFUL COMMENT: removes positions from positions array */
+  /** State handler for decrementing the number of splits in position p1 of the occupancyVector in SplitPositionProps */
   private _decrPosition = (position: SplitPosition) => {
     this.setState(curState => ({
       splitPositions: decrPosition(curState.splitPositions, position)
