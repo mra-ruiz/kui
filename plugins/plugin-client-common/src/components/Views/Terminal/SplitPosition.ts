@@ -44,16 +44,20 @@ export function initialSplit(): OccupancyVector {
   return [1, 0, 0, 0]
 }
 
-/** TODO */
+/** returns a number representing the amount of splits in type SplitPosition */
 function splitPositionLength(): number {
   return Object.keys(SplitPosition).length / 2
 }
 
+/** returns whether there is at least one split in position p1 in OccupancyVector o1 */
 function isOccupied(o1: OccupancyVector, p1: SplitPosition): boolean {
   return o1[p1] > 0
 }
 
-/** TODO */
+/**
+ * @param o1 OccupancyVector
+ * @return boolean representing whether there is at least one of each kind of split in OccupancyVector o1
+ * */
 export function isFull(o1: OccupancyVector): boolean {
   return o1.every(posQuantity => posQuantity > 0)
 }
@@ -85,8 +89,10 @@ export function decrPosition(o1: OccupancyVector, p1: SplitPosition): OccupancyV
   return o2
 }
 
-/** TODO */
-export function hasDefault(o1: OccupancyVector): boolean {
+/**
+ * @param o1 OccupancyVector
+ * @return boolean representing whether there is at least one split in the default position
+ * */ export function hasDefault(o1: OccupancyVector): boolean {
   return o1[SplitPosition.default] > 0
 }
 

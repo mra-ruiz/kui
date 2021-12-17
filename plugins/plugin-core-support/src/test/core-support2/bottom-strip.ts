@@ -25,7 +25,8 @@ import {
   isLeftStrip,
   isBottomStrip,
   isDefault,
-  splitViaButton
+  splitViaButton,
+  isRightStrip
 } from './split-helpers'
 
 describe(`bottom strip splits ${process.env.MOCHA_RUN_TARGET || ''}`, function(this: Common.ISuite) {
@@ -37,6 +38,7 @@ describe(`bottom strip splits ${process.env.MOCHA_RUN_TARGET || ''}`, function(t
   const togglePosition = doToggleSplitPosition.bind(this)
   const closeViaCommand = close.bind(this)
   const closeTheSplit = closeViaButton.bind(this)
+  const rightStrip = isRightStrip.bind(this)
   const leftStrip = isLeftStrip.bind(this)
   const bottomStrip = isBottomStrip.bind(this)
   const defaultSplit = isDefault.bind(this)
@@ -47,7 +49,13 @@ describe(`bottom strip splits ${process.env.MOCHA_RUN_TARGET || ''}`, function(t
   splitTheTerminalViaButton(2)
   count(2)
 
-  // DEFAULT+DEFAULT -> BOTTOM+DEFAULT
+  // DEFAULT+DEFAULT -> DEFAULT+RIGHT
+  togglePosition(SplitPosition.right, 1)
+  count(2)
+  rightStrip(1)
+  defaultSplit(2)
+
+  // RIGHT+DEFAULT -> BOTTOM+DEFAULT
   togglePosition(SplitPosition.bottom, 1)
   count(2)
   bottomStrip(1)
