@@ -27,7 +27,7 @@
     },
     {
       "label": "Knative",
-      "submenu": [{ "notebook": "Getting Started with Knative", "filepath": "/kui/getting-started-knative.md" }]
+      "submenu": [{ "notebook": "Getting Started", "filepath": "/kui/getting-started-knative.md" }]
     }
   ]
 }
