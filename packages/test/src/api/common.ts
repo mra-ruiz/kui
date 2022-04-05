@@ -17,7 +17,9 @@
 import { join, relative } from 'path'
 import * as colors from 'colors'
 import { Func, Suite, HookFunction, after as mochaAfter } from 'mocha'
-import { Application, ApplicationSettings } from 'spectron'
+// import type { Capabilities } from '@wdio/types'
+// import { ChromedriverServiceOptions } from 'wdio-chromedriver-service';
+import { Browser } from 'webdriverio'
 
 import { version } from '@kui-shell/client/package.json'
 
@@ -37,6 +39,11 @@ const codeCoverageTempDirectory = () =>
   process.env.TRAVIS_BUILD_DIR
     ? join(process.env.TRAVIS_BUILD_DIR, 'packages/test/.nyc_output')
     : join(process.env.TEST_ROOT, '.nyc_output')
+
+export interface Application {
+  client: Browser<'async'>
+  stuff: WebdriverIO.Config
+}
 
 // eslint-disable-next-line @typescript-eslint/interface-name-prefix
 export interface ISuite extends Suite {
@@ -115,7 +122,17 @@ async function writeCodeCoverage(app: Application) {
  */
 let app: Application
 mochaAfter(async () => {
-  if (app && app.isRunning()) {
+  /*
+   
+     * fulfilled when Electron is initialized. May be used as a convenient alternative
+     * to checking `app.isReady()` and subscribing to the `ready` event if the app is
+     * not ready yet.
+     
+    whenReady(): Promise<void>;
+
+    other possible replacements: electron.getCurrentActivityType(), getAllRunning() 
+  */
+  if (app && app.whenReady()) {
     await app.stop()
   }
 })
@@ -131,88 +148,108 @@ const waitTimeout = parseInt(process.env.TIMEOUT) || 60000
  *
  */
 const prepareElectron = (popup: string[]) => {
-  const Application = require('spectron').Application
+  const App = require('webdriverio').BrowserAsync
   const electron = require('electron')
 
-  // ugh, Spectron has `env` as having type `object`, which typescript doesn't really like
-  const opts: Omit<ApplicationSettings, 'env'> & { env: Record<string, string> } = {
-    path: '',
-    env: {},
-    chromeDriverArgs: ['--no-sandbox'],
-    chromeDriverLogPath: '/tmp/cd.log',
-    webdriverLogPath: '/tmp',
-    webdriverOptions: {
-      prefs: {
+  // Additional environment variables to set in the launched chrome application
+  const env: Record<string, string> = {}
+  if (process.env.WSKNG_NODE_DEBUG) {
+    // pass WSKNG_DEBUG on to NODE_DEBUG for the application
+    env.NODE_DEBUG = process.env.WSKNG_NODE_DEBUG
+  }
+  if (process.env.DEBUG) {
+    env.DEBUG = process.env.DEBUG
+  }
+  if (popup) {
+    // used in spawn-electron.ts
+    env.KUI_POPUP = JSON.stringify(popup)
+    env.KUI_POPUP_WINDOW_RESIZE = 'true'
+  }
+  const chromeDriverArgs = Object.keys(env).map((key, index) => `spectron-env-${index}=${env[key]}`)
+
+  // Chrome driver options object - to be used for the WDIO configuration below
+  const chromeDriverOptions = {
+    port: 9519,
+    logFileName: '/tmp/cd.log',
+    args: ['--no-sandbox'] // maybe no -- before no sandbox: https://github.com/webdriverio-community/wdio-electron-service/blob/main/test/service.spec.ts
+  }
+
+  // Configuration object - to be used for the WDIO configuration below
+  const configObject = {
+    appPath: '',
+    appName: '',
+    appArgs: [''],
+    chromedriver: chromeDriverOptions
+  }
+
+  // WDIO Electron Service configuration
+  const config: Browser<'async'>['config'] = {
+    // what type should config be?
+    services: [['electron', configObject]],
+    capabilities: [
+      {
         // necessary to avoid "Failed to read the 'localStorage'
         // property from 'Window': Access is denied for this document."
-        'profile.cookie_controls_mode': 0
+        chromeOptions: { prefs: { 'profile.cookie_controls_mode': 0 }, args: chromeDriverArgs }
       }
-    },
-    startTimeout: parseInt(process.env.TIMEOUT) || 60000, // see https://github.com/IBM/kui/issues/2227
-    waitTimeout
+    ],
+    waitforTimeout: waitTimeout,
+    outputDir: '/tmp'
+
+    // wdio doesn't seem to have a property similar to Spectron's 'startTimer', so we will remove 'startTimer' for now
+    // startTimeout: parseInt(process.env.TIMEOUT) || 60000, // see https://github.com/IBM/kui/issues/2227
   }
 
   /* if (!popup && (process.env.HEADLESS !== undefined || process.env.TRAVIS_JOB_ID !== undefined)) {
     console.log('Using chromedriver in headless mode')
-    opts.chromeDriverArgs.push('--headless')
+    config.chromeDriverArgs.push('--headless')
   } else {
     console.log('Using chromedriver NOT in headless mode')
   } */
 
   if (process.env.PORT_OFFSET) {
     const offset = parseInt(process.env.PORT_OFFSET, 10)
-
-    opts.port = 9515 + offset
-    opts.chromeDriverArgs.push(`--remote-debugging-port=${57289 + offset}`)
+    config.port = 9515 + offset
+    chromeDriverOptions.args.push(`--remote-debugging-port=${57289 + offset}`)
 
     const userDataDir = join(TMP, `kui-profile-${process.env.PORT_OFFSET}`)
-    opts.chromeDriverArgs.push(`--user-data-dir=${userDataDir}`)
+    chromeDriverOptions.args.push(`--user-data-dir=${userDataDir}`)
 
-    console.log(`Using chromedriver port ${opts['port']}`)
+    console.log(`Using chromedriver port ${config['port']}`)
     console.log(`Using chromedriver user-data-dir ${userDataDir}`)
   }
 
   if (process.env.MOCHA_RUN_TARGET === 'webpack') {
     console.log(`Testing Webpack against chromium`)
-    opts.path = electron.toString() // this means spectron will use electron located in node_modules
-    opts.args = [join(process.env.TEST_SUITE_ROOT, 'core/tests/lib/main.js')]
+    configObject.appName = electron.app.getName()
+    configObject.appPath = electron.toString() // this means spectron will use electron located in node_modules
+    configObject.appArgs = [join(process.env.TEST_SUITE_ROOT, 'core/tests/lib/main.js')]
   } else if (process.env.TEST_FROM_BUILD) {
     console.log(`Using build-based assets: ${process.env.TEST_FROM_BUILD}`)
-    opts.path = process.env.TEST_FROM_BUILD
+    configObject.appName = electron.app.getName()
+    configObject.appPath = process.env.TEST_FROM_BUILD
   } else {
     const appMain = process.env.APP_MAIN || join(process.env.TEST_SUITE_ROOT, '../..')
     console.log('Using filesystem-based assets', appMain)
-    opts.path = electron.toString() // this means spectron will use electron located in node_modules
-    opts.args = [appMain] // in this mode, we need to specify the main.js to use
+    configObject.appName = electron.app.getName()
+    configObject.appPath = electron.toString() // this means spectron will use electron located in node_modules
+    configObject.appArgs = [appMain] // in this mode, we need to specify the main.js to use
   }
 
   if (process.env.CHROMEDRIVER_PORT) {
-    opts.port = parseInt(process.env.CHROMEDRIVER_PORT)
-  }
-  if (process.env.WSKNG_NODE_DEBUG) {
-    // pass WSKNG_DEBUG on to NODE_DEBUG for the application
-    opts.env.NODE_DEBUG = process.env.WSKNG_NODE_DEBUG
-  }
-  if (process.env.DEBUG) {
-    opts.env.DEBUG = process.env.DEBUG
+    config.port = parseInt(process.env.CHROMEDRIVER_PORT)
   }
 
-  if (popup) {
-    // used in spawn-electron.ts
-    opts.env.KUI_POPUP = JSON.stringify(popup)
-    opts.env.KUI_POPUP_WINDOW_RESIZE = 'true'
-  }
-
-  return new Application(opts)
+  return new App(config)
 }
 
 /** Add app.client commands */
-function addCommands(ctx: ISuite) {
+function addCommands(ctx: Application) {
   // add an isActive command; isFocused is not what we want
-  if (ctx.app && ctx.app.client) {
+  if (ctx && ctx.client) {
     // ref: https://github.com/webdriverio/webdriverio/issues/1362#issuecomment-224042781
-    ctx.app.client.addCommand('isActive', selector => {
-      return ctx.app.client.execute(selector => {
+    ctx.client.addCommand('isActive', selector => {
+      return ctx.client.execute(selector => {
         const focused = document.activeElement
 
         if (!focused || focused === document.body) {
